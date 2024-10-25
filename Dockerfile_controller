@@ -1,0 +1,27 @@
+FROM alpine:latest
+
+# Instalar dependencias necesarias
+RUN apk update && \
+    apk add --no-cache iproute2 net-tools openssh ansible
+
+# Crear usuario ansible sin privilegios de root
+RUN adduser -D ansible && \
+    mkdir -p /home/ansible/.ssh && \
+    chown -R ansible:ansible /home/ansible/.ssh && \
+    chmod 700 /home/ansible/.ssh
+
+# Copiar claves SSH
+USER ansible
+WORKDIR /home/ansible/.ssh
+ADD id_rsa .
+ADD id_rsa.pub .
+RUN chmod 600 id_rsa && \
+    chmod 644 id_rsa.pub && \
+    cp id_rsa.pub authorized_keys && \
+    chmod 600 authorized_keys
+
+# Exponer el puerto SSH
+EXPOSE 22
+
+# Comando para iniciar el servicio SSH
+CMD ["/usr/sbin/sshd", "-D"]
