@@ -3,6 +3,7 @@ on:
 #disparar el pipeline de forma manual
   workflow_dispatch:
   push:
+    branches: [main]
 jobs:
   ci:
     runs-on: ubuntu-latest
