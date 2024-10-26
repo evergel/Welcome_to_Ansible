@@ -1,0 +1,30 @@
+FROM alpine:latest
+
+# Instalamos OpenSSH
+RUN apk update && \
+    apk add --no-cache sudo openssh bash python3
+
+# Creamos el usuario ansible
+RUN adduser -D -s /bin/bash ansible && \
+    echo "ansible:gG930" | chpasswd
+
+RUN echo "ansible ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Creamos el directorio .ssh para el usuario ansible
+RUN mkdir -p /home/ansible/.ssh && \
+    chown -R ansible:ansible /home/ansible/.ssh && \
+    chmod 700 /home/ansible/.ssh
+
+# Configuramos el servidor SSH para permitir conexiones no como root
+RUN ssh-keygen -A && \
+    echo "PermitRootLogin no" >> /etc/ssh/sshd_config && \
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
+    echo "AllowUsers ansible" >> /etc/ssh/sshd_config
+
+WORKDIR /home/ansible/
+
+# Exponemos el puerto SSH
+EXPOSE 22
+
+# Iniciamos el servicio SSH
+CMD ["/usr/sbin/sshd", "-D"]
