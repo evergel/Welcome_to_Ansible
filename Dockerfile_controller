@@ -2,7 +2,20 @@ FROM alpine:latest
 
 # Instalar dependencias necesarias
 RUN apk update && \
-    apk add --no-cache iproute2 net-tools openssh ansible
+    apk add --no-cache iproute2 net-tools openssh ansible python3
+
+# Copiar archivo de configuración de Ansible
+COPY .ansible.cfg /home/ansible/.ansible.cfg
+
+# Establecer variable de entorno para la configuración de Ansible
+ENV ANSIBLE_CONFIG=/home/ansible/.ansible.cfg
+
+# Configurar el servidor SSH
+RUN ssh-keygen -A && \
+    echo "PermitRootLogin no" >> /etc/ssh/sshd_config && \
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
+    echo "AllowUsers ansible" >> /etc/ssh/sshd_config && \
+    echo "Port 2222" >> /etc/ssh/sshd_config
 
 # Crear usuario ansible sin privilegios de root
 RUN adduser -D ansible && \
@@ -10,18 +23,19 @@ RUN adduser -D ansible && \
     chown -R ansible:ansible /home/ansible/.ssh && \
     chmod 700 /home/ansible/.ssh
 
-# Copiar claves SSH
+# Cambiar al usuario ansible y crear una clave SSH de 4096 bits para el usuario
 USER ansible
 WORKDIR /home/ansible/.ssh
-ADD id_rsa .
-ADD id_rsa.pub .
-RUN chmod 600 id_rsa && \
-    chmod 644 id_rsa.pub && \
+RUN ssh-keygen -t rsa -b 4096 -f id_rsa -q -N "" && \
     cp id_rsa.pub authorized_keys && \
-    chmod 600 authorized_keys
+    chmod 600 id_rsa id_rsa.pub authorized_keys
 
-# Exponer el puerto SSH
-EXPOSE 22
+WORKDIR /home/ansible/
 
-# Comando para iniciar el servicio SSH
-CMD ["/usr/sbin/sshd", "-D"]
+USER root
+
+# Exponer el puerto SSH (2222)
+EXPOSE 2222
+
+# Comando para iniciar el servicio SSH en el puerto 2222
+CMD ["/usr/sbin/sshd", "-D", "-p", "2222"]
